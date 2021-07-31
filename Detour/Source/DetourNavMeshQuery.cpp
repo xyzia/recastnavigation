@@ -324,9 +324,9 @@ bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const fl
 	return true;
 }
 
-dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
-						const dtPolyRef *polyPath, int polyPathSize,
-						float *smoothPath, int *smoothPathSize, int maxSmoothPathSize)
+dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
+										const dtPolyRef *polyPath, int polyPathSize,
+										float *smoothPath, int *smoothPathSize, int maxSmoothPathSize)
 {
 	*smoothPathSize = 0;
 	int nsmoothPath = 0;

@@ -273,6 +273,14 @@ int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
 	return req + size;
 }
 
+bool inRangeYZX(const float *v1, const float *v2, float r, float h)
+{
+	const float dx = v2[0] - v1[0];
+	const float dy = v2[1] - v1[1]; // elevation
+	const float dz = v2[2] - v1[2];
+	return (dx * dx + dz * dz) < r * r && fabsf(dy) < h;
+}
+
 bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
 					float minTargetDist, const dtPolyRef *path, int pathSize,
 					float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef)
@@ -314,14 +322,6 @@ bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const fl
 	steerPosRef = steerPathPolys[ns];
 
 	return true;
-}
-
-bool inRangeYZX(const float *v1, const float *v2, float r, float h)
-{
-	const float dx = v2[0] - v1[0];
-	const float dy = v2[1] - v1[1]; // elevation
-	const float dz = v2[2] - v1[2];
-	return (dx * dx + dz * dz) < r * r && fabsf(dy) < h;
 }
 
 dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,

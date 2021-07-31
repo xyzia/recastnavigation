@@ -210,14 +210,14 @@ public:
 							const dtPolyRef *polyPath, int polyPathSize,
 							float *smoothPath, int *smoothPathSize, int maxSmoothPathSize);
 
+		bool inRangeYZX(const float *v1, const float *v2, float r, float h);
+
 	int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
 					  const dtPolyRef *visited, int nvisited);
 
 	bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
 						float minTargetDist, const dtPolyRef *path, int pathSize,
 						float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef);
-
-	bool inRangeYZX(const float *v1, const float *v2, float r, float h);
 
 	/// Finds the straight path from the start to the end position within the polygon corridor.
 	///  @param[in]		startPos			Path start position. [(x, y, z)]

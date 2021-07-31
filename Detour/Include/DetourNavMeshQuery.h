@@ -206,9 +206,9 @@ public:
 					  const dtQueryFilter *filter,
 					  dtPolyRef *path, int *pathCount, const int maxPath) const;
 
-	dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
-											const dtPolyRef *polyPath, int polyPathSize,
-											float *smoothPath, int *smoothPathSize, int maxSmoothPathSize);
+	dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
+							const dtPolyRef *polyPath, int polyPathSize,
+							float *smoothPath, int *smoothPathSize, int maxSmoothPathSize);
 
 	bool inRangeYZX(const float *v1, const float *v2, float r, float h);
 

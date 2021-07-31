@@ -217,8 +217,8 @@ dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
 	return DT_SUCCESS;
 }
 
-int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
-				  const dtPolyRef *visited, int nvisited)
+int dtNavMeshQuery::fixupCorridor(dtPolyRef *path, int npath, int maxPath,
+								  const dtPolyRef *visited, int nvisited)
 {
 	int furthestPath = -1;
 	int furthestVisited = -1;
@@ -273,7 +273,7 @@ int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
 	return req + size;
 }
 
-bool inRangeYZX(const float *v1, const float *v2, float r, float h)
+bool dtNavMeshQuery::inRangeYZX(const float *v1, const float *v2, float r, float h)
 {
 	const float dx = v2[0] - v1[0];
 	const float dy = v2[1] - v1[1]; // elevation
@@ -281,9 +281,9 @@ bool inRangeYZX(const float *v1, const float *v2, float r, float h)
 	return (dx * dx + dz * dz) < r * r && fabsf(dy) < h;
 }
 
-bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
-					float minTargetDist, const dtPolyRef *path, int pathSize,
-					float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef)
+bool dtNavMeshQuery::getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
+									float minTargetDist, const dtPolyRef *path, int pathSize,
+									float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef)
 {
 	// Find steer target.
 	static const int MAX_STEER_POINTS = 3;

@@ -210,6 +210,15 @@ public:
 							const dtPolyRef *polyPath, uint32_t polyPathSize,
 							float *smoothPath, int *smoothPathSize, uint32_t maxSmoothPathSize);
 
+	uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
+						   const dtPolyRef *visited, uint32_t nvisited);
+
+	bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
+						float minTargetDist, const dtPolyRef *path, uint32_t pathSize,
+						float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef);
+
+	bool inRangeYZX(const float *v1, const float *v2, float r, float h);
+
 	/// Finds the straight path from the start to the end position within the polygon corridor.
 	///  @param[in]		startPos			Path start position. [(x, y, z)]
 	///  @param[in]		endPos				Path end position. [(x, y, z)]
@@ -602,13 +611,5 @@ dtNavMeshQuery *dtAllocNavMeshQuery();
 ///  @param[in]		query		A query object allocated using #dtAllocNavMeshQuery
 /// @ingroup detour
 void dtFreeNavMeshQuery(dtNavMeshQuery *query);
-uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
-					   const dtPolyRef *visited, uint32_t nvisited);
-
-bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
-					float minTargetDist, const dtPolyRef *path, uint32_t pathSize,
-					float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef);
-
-bool inRangeYZX(const float *v1, const float *v2, float r, float h);
 
 #endif // DETOURNAVMESHQUERY_H

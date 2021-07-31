@@ -117,6 +117,106 @@ void dtFreeNavMeshQuery(dtNavMeshQuery *navmesh)
 	dtFree(navmesh);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+
+/// @class dtNavMeshQuery
+///
+/// For methods that support undersized buffers, if the buffer is too small
+/// to hold the entire result set the return status of the method will include
+/// the #DT_BUFFER_TOO_SMALL flag.
+///
+/// Constant member functions can be used by multiple clients without side
+/// effects. (E.g. No change to the closed list. No impact on an in-progress
+/// sliced path query. Etc.)
+///
+/// Walls and portals: A @e wall is a polygon segment that is
+/// considered impassable. A @e portal is a passable segment between polygons.
+/// A portal may be treated as a wall based on the dtQueryFilter used for a query.
+///
+/// @see dtNavMesh, dtQueryFilter, #dtAllocNavMeshQuery(), #dtAllocNavMeshQuery()
+
+dtNavMeshQuery::dtNavMeshQuery() : m_nav(0),
+								   m_tinyNodePool(0),
+								   m_nodePool(0),
+								   m_openList(0)
+{
+	memset(&m_query, 0, sizeof(dtQueryData));
+}
+
+dtNavMeshQuery::~dtNavMeshQuery()
+{
+	if (m_tinyNodePool)
+		m_tinyNodePool->~dtNodePool();
+	if (m_nodePool)
+		m_nodePool->~dtNodePool();
+	if (m_openList)
+		m_openList->~dtNodeQueue();
+	dtFree(m_tinyNodePool);
+	dtFree(m_nodePool);
+	dtFree(m_openList);
+}
+
+/// @par
+///
+/// Must be the first function called after construction, before other
+/// functions are used.
+///
+/// This function can be used multiple times.
+dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
+{
+	if (maxNodes > DT_NULL_IDX || maxNodes > (1 << DT_NODE_PARENT_BITS) - 1)
+		return DT_FAILURE | DT_INVALID_PARAM;
+
+	m_nav = nav;
+
+	if (!m_nodePool || m_nodePool->getMaxNodes() < maxNodes)
+	{
+		if (m_nodePool)
+		{
+			m_nodePool->~dtNodePool();
+			dtFree(m_nodePool);
+			m_nodePool = 0;
+		}
+		m_nodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(maxNodes, dtNextPow2(maxNodes / 4));
+		if (!m_nodePool)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_nodePool->clear();
+	}
+
+	if (!m_tinyNodePool)
+	{
+		m_tinyNodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(64, 32);
+		if (!m_tinyNodePool)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_tinyNodePool->clear();
+	}
+
+	if (!m_openList || m_openList->getCapacity() < maxNodes)
+	{
+		if (m_openList)
+		{
+			m_openList->~dtNodeQueue();
+			dtFree(m_openList);
+			m_openList = 0;
+		}
+		m_openList = new (dtAlloc(sizeof(dtNodeQueue), DT_ALLOC_PERM)) dtNodeQueue(maxNodes);
+		if (!m_openList)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_openList->clear();
+	}
+
+	return DT_SUCCESS;
+}
+
 uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 					   const dtPolyRef *visited, uint32_t nvisited)
 {
@@ -222,106 +322,6 @@ bool inRangeYZX(const float *v1, const float *v2, float r, float h)
 	const float dy = v2[1] - v1[1]; // elevation
 	const float dz = v2[2] - v1[2];
 	return (dx * dx + dz * dz) < r * r && fabsf(dy) < h;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-
-/// @class dtNavMeshQuery
-///
-/// For methods that support undersized buffers, if the buffer is too small
-/// to hold the entire result set the return status of the method will include
-/// the #DT_BUFFER_TOO_SMALL flag.
-///
-/// Constant member functions can be used by multiple clients without side
-/// effects. (E.g. No change to the closed list. No impact on an in-progress
-/// sliced path query. Etc.)
-///
-/// Walls and portals: A @e wall is a polygon segment that is
-/// considered impassable. A @e portal is a passable segment between polygons.
-/// A portal may be treated as a wall based on the dtQueryFilter used for a query.
-///
-/// @see dtNavMesh, dtQueryFilter, #dtAllocNavMeshQuery(), #dtAllocNavMeshQuery()
-
-dtNavMeshQuery::dtNavMeshQuery() : m_nav(0),
-								   m_tinyNodePool(0),
-								   m_nodePool(0),
-								   m_openList(0)
-{
-	memset(&m_query, 0, sizeof(dtQueryData));
-}
-
-dtNavMeshQuery::~dtNavMeshQuery()
-{
-	if (m_tinyNodePool)
-		m_tinyNodePool->~dtNodePool();
-	if (m_nodePool)
-		m_nodePool->~dtNodePool();
-	if (m_openList)
-		m_openList->~dtNodeQueue();
-	dtFree(m_tinyNodePool);
-	dtFree(m_nodePool);
-	dtFree(m_openList);
-}
-
-/// @par
-///
-/// Must be the first function called after construction, before other
-/// functions are used.
-///
-/// This function can be used multiple times.
-dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
-{
-	if (maxNodes > DT_NULL_IDX || maxNodes > (1 << DT_NODE_PARENT_BITS) - 1)
-		return DT_FAILURE | DT_INVALID_PARAM;
-
-	m_nav = nav;
-
-	if (!m_nodePool || m_nodePool->getMaxNodes() < maxNodes)
-	{
-		if (m_nodePool)
-		{
-			m_nodePool->~dtNodePool();
-			dtFree(m_nodePool);
-			m_nodePool = 0;
-		}
-		m_nodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(maxNodes, dtNextPow2(maxNodes / 4));
-		if (!m_nodePool)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_nodePool->clear();
-	}
-
-	if (!m_tinyNodePool)
-	{
-		m_tinyNodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(64, 32);
-		if (!m_tinyNodePool)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_tinyNodePool->clear();
-	}
-
-	if (!m_openList || m_openList->getCapacity() < maxNodes)
-	{
-		if (m_openList)
-		{
-			m_openList->~dtNodeQueue();
-			dtFree(m_openList);
-			m_openList = 0;
-		}
-		m_openList = new (dtAlloc(sizeof(dtNodeQueue), DT_ALLOC_PERM)) dtNodeQueue(maxNodes);
-		if (!m_openList)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_openList->clear();
-	}
-
-	return DT_SUCCESS;
 }
 
 dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,

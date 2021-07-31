@@ -217,17 +217,17 @@ dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
 	return DT_SUCCESS;
 }
 
-uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
-					   const dtPolyRef *visited, uint32_t nvisited)
+int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
+				  const dtPolyRef *visited, int nvisited)
 {
-	uint32_t furthestPath = -1;
-	uint32_t furthestVisited = -1;
+	int furthestPath = -1;
+	int furthestVisited = -1;
 
 	// Find furthest common polygon.
-	for (uint32_t i = npath - 1; i >= 0; --i)
+	for (int i = npath - 1; i >= 0; --i)
 	{
 		bool found = false;
-		for (uint32_t j = nvisited - 1; j >= 0; --j)
+		for (int j = nvisited - 1; j >= 0; --j)
 		{
 			if (path[i] == visited[j])
 			{
@@ -251,9 +251,9 @@ uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 	// Concatenate paths.
 
 	// Adjust beginning of the buffer to include the visited.
-	uint32_t req = nvisited - furthestVisited;
-	uint32_t orig = uint32_t(furthestPath + 1) < npath ? furthestPath + 1 : npath;
-	uint32_t size = npath > orig ? npath - orig : 0;
+	int req = nvisited - furthestVisited;
+	int orig = int(furthestPath + 1) < npath ? furthestPath + 1 : npath;
+	int size = npath > orig ? npath - orig : 0;
 	if (req + size > maxPath)
 	{
 		size = maxPath - req;
@@ -265,7 +265,7 @@ uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 	}
 
 	// Store visited
-	for (uint32_t i = 0; i < req; ++i)
+	for (int i = 0; i < req; ++i)
 	{
 		path[i] = visited[(nvisited - 1) - i];
 	}
@@ -274,15 +274,15 @@ uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 }
 
 bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
-					float minTargetDist, const dtPolyRef *path, uint32_t pathSize,
+					float minTargetDist, const dtPolyRef *path, int pathSize,
 					float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef)
 {
 	// Find steer target.
-	static const uint32_t MAX_STEER_POINTS = 3;
+	static const int MAX_STEER_POINTS = 3;
 	float steerPath[MAX_STEER_POINTS * VERTEX_SIZE];
 	unsigned char steerPathFlags[MAX_STEER_POINTS];
 	dtPolyRef steerPathPolys[MAX_STEER_POINTS];
-	uint32_t nsteerPath = 0;
+	int nsteerPath = 0;
 	dtStatus dtResult = query->findStraightPath(startPos, endPos, path, pathSize,
 												steerPath, steerPathFlags, steerPathPolys, (int *)&nsteerPath, MAX_STEER_POINTS);
 	if (!nsteerPath || dtStatusFailed(dtResult))
@@ -291,7 +291,7 @@ bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const fl
 	}
 
 	// Find vertex far enough to steer to.
-	uint32_t ns = 0;
+	int ns = 0;
 	while (ns < nsteerPath)
 	{
 		// Stop at Off-Mesh link or when point is further than slop away.
@@ -325,15 +325,15 @@ bool inRangeYZX(const float *v1, const float *v2, float r, float h)
 }
 
 dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
-						const dtPolyRef *polyPath, uint32_t polyPathSize,
-						float *smoothPath, int *smoothPathSize, uint32_t maxSmoothPathSize)
+						const dtPolyRef *polyPath, int polyPathSize,
+						float *smoothPath, int *smoothPathSize, int maxSmoothPathSize)
 {
 	*smoothPathSize = 0;
-	uint32_t nsmoothPath = 0;
+	int nsmoothPath = 0;
 
 	dtPolyRef polys[MAX_PATH_LENGTH];
 	memcpy(polys, polyPath, sizeof(dtPolyRef) * polyPathSize);
-	uint32_t npolys = polyPathSize;
+	int npolys = polyPathSize;
 
 	float iterPos[VERTEX_SIZE], targetPos[VERTEX_SIZE];
 	dtStatus dtResult = m_navMeshQuery->closestPointOnPolyBoundary(polys[0], startPos, iterPos);
@@ -387,10 +387,10 @@ dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *fil
 
 		// Move
 		float result[VERTEX_SIZE];
-		const static uint32_t MAX_VISIT_POLY = 16;
+		const static int MAX_VISIT_POLY = 16;
 		dtPolyRef visited[MAX_VISIT_POLY];
 
-		uint32_t nvisited = 0;
+		int nvisited = 0;
 		m_navMeshQuery->moveAlongSurface(polys[0], iterPos, moveTgt, filter, result, visited, (int *)&nvisited, MAX_VISIT_POLY);
 		npolys = fixupCorridor(polys, npolys, MAX_PATH_LENGTH, visited, nvisited);
 
@@ -415,7 +415,7 @@ dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *fil
 			// Advance the path up to and over the off-mesh connection.
 			dtPolyRef prevRef = INVALID_POLYREF;
 			dtPolyRef polyRef = polys[0];
-			uint32_t npos = 0;
+			int npos = 0;
 			while (npos < npolys && polyRef != steerPosRef)
 			{
 				prevRef = polyRef;
@@ -423,7 +423,7 @@ dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *fil
 				++npos;
 			}
 
-			for (uint32_t i = npos; i < npolys; ++i)
+			for (int i = npos; i < npolys; ++i)
 			{
 				polys[i - npos] = polys[i];
 			}

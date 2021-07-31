@@ -207,14 +207,14 @@ public:
 					  dtPolyRef *path, int *pathCount, const int maxPath) const;
 
 	dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
-							const dtPolyRef *polyPath, uint32_t polyPathSize,
-							float *smoothPath, int *smoothPathSize, uint32_t maxSmoothPathSize);
+							const dtPolyRef *polyPath, int polyPathSize,
+							float *smoothPath, int *smoothPathSize, int maxSmoothPathSize);
 
-	uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
-						   const dtPolyRef *visited, uint32_t nvisited);
+	int fixupCorridor(dtPolyRef *path, int npath, int maxPath,
+					  const dtPolyRef *visited, int nvisited);
 
 	bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
-						float minTargetDist, const dtPolyRef *path, uint32_t pathSize,
+						float minTargetDist, const dtPolyRef *path, int pathSize,
 						float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef);
 
 	bool inRangeYZX(const float *v1, const float *v2, float r, float h);

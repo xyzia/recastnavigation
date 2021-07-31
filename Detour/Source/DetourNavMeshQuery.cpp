@@ -117,202 +117,6 @@ void dtFreeNavMeshQuery(dtNavMeshQuery *navmesh)
 	dtFree(navmesh);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
-
-/// @class dtNavMeshQuery
-///
-/// For methods that support undersized buffers, if the buffer is too small
-/// to hold the entire result set the return status of the method will include
-/// the #DT_BUFFER_TOO_SMALL flag.
-///
-/// Constant member functions can be used by multiple clients without side
-/// effects. (E.g. No change to the closed list. No impact on an in-progress
-/// sliced path query. Etc.)
-///
-/// Walls and portals: A @e wall is a polygon segment that is
-/// considered impassable. A @e portal is a passable segment between polygons.
-/// A portal may be treated as a wall based on the dtQueryFilter used for a query.
-///
-/// @see dtNavMesh, dtQueryFilter, #dtAllocNavMeshQuery(), #dtAllocNavMeshQuery()
-
-dtNavMeshQuery::dtNavMeshQuery() : m_nav(0),
-								   m_tinyNodePool(0),
-								   m_nodePool(0),
-								   m_openList(0)
-{
-	memset(&m_query, 0, sizeof(dtQueryData));
-}
-
-dtNavMeshQuery::~dtNavMeshQuery()
-{
-	if (m_tinyNodePool)
-		m_tinyNodePool->~dtNodePool();
-	if (m_nodePool)
-		m_nodePool->~dtNodePool();
-	if (m_openList)
-		m_openList->~dtNodeQueue();
-	dtFree(m_tinyNodePool);
-	dtFree(m_nodePool);
-	dtFree(m_openList);
-}
-
-/// @par
-///
-/// Must be the first function called after construction, before other
-/// functions are used.
-///
-/// This function can be used multiple times.
-dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
-{
-	if (maxNodes > DT_NULL_IDX || maxNodes > (1 << DT_NODE_PARENT_BITS) - 1)
-		return DT_FAILURE | DT_INVALID_PARAM;
-
-	m_nav = nav;
-
-	if (!m_nodePool || m_nodePool->getMaxNodes() < maxNodes)
-	{
-		if (m_nodePool)
-		{
-			m_nodePool->~dtNodePool();
-			dtFree(m_nodePool);
-			m_nodePool = 0;
-		}
-		m_nodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(maxNodes, dtNextPow2(maxNodes / 4));
-		if (!m_nodePool)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_nodePool->clear();
-	}
-
-	if (!m_tinyNodePool)
-	{
-		m_tinyNodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(64, 32);
-		if (!m_tinyNodePool)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_tinyNodePool->clear();
-	}
-
-	if (!m_openList || m_openList->getCapacity() < maxNodes)
-	{
-		if (m_openList)
-		{
-			m_openList->~dtNodeQueue();
-			dtFree(m_openList);
-			m_openList = 0;
-		}
-		m_openList = new (dtAlloc(sizeof(dtNodeQueue), DT_ALLOC_PERM)) dtNodeQueue(maxNodes);
-		if (!m_openList)
-			return DT_FAILURE | DT_OUT_OF_MEMORY;
-	}
-	else
-	{
-		m_openList->clear();
-	}
-
-	return DT_SUCCESS;
-}
-
-dtStatus dtNavMeshQuery::findRandomPoint(const dtQueryFilter *filter, float (*frand)(),
-										 dtPolyRef *randomRef, float *randomPt) const
-{
-	dtAssert(m_nav);
-
-	if (!filter || !frand || !randomRef || !randomPt)
-		return DT_FAILURE | DT_INVALID_PARAM;
-
-	// Randomly pick one tile. Assume that all tiles cover roughly the same area.
-	const dtMeshTile *tile = 0;
-	float tsum = 0.0f;
-	for (int i = 0; i < m_nav->getMaxTiles(); i++)
-	{
-		const dtMeshTile *t = m_nav->getTile(i);
-		if (!t || !t->header)
-			continue;
-
-		// Choose random tile using reservoi sampling.
-		const float area = 1.0f; // Could be tile area too.
-		tsum += area;
-		const float u = frand();
-		if (u * tsum <= area)
-			tile = t;
-	}
-	if (!tile)
-		return DT_FAILURE;
-
-	// Randomly pick one polygon weighted by polygon area.
-	const dtPoly *poly = 0;
-	dtPolyRef polyRef = 0;
-	const dtPolyRef base = m_nav->getPolyRefBase(tile);
-
-	float areaSum = 0.0f;
-	for (int i = 0; i < tile->header->polyCount; ++i)
-	{
-		const dtPoly *p = &tile->polys[i];
-		// Do not return off-mesh connection polygons.
-		if (p->getType() != DT_POLYTYPE_GROUND)
-			continue;
-		// Must pass filter
-		const dtPolyRef ref = base | (dtPolyRef)i;
-		if (!filter->passFilter(ref, tile, p))
-			continue;
-
-		// Calc area of the polygon.
-		float polyArea = 0.0f;
-		for (int j = 2; j < p->vertCount; ++j)
-		{
-			const float *va = &tile->verts[p->verts[0] * 3];
-			const float *vb = &tile->verts[p->verts[j - 1] * 3];
-			const float *vc = &tile->verts[p->verts[j] * 3];
-			polyArea += dtTriArea2D(va, vb, vc);
-		}
-
-		// Choose random polygon weighted by area, using reservoi sampling.
-		areaSum += polyArea;
-		const float u = frand();
-		if (u * areaSum <= polyArea)
-		{
-			poly = p;
-			polyRef = ref;
-		}
-	}
-
-	if (!poly)
-		return DT_FAILURE;
-
-	// Randomly pick point on polygon.
-	const float *v = &tile->verts[poly->verts[0] * 3];
-	float verts[3 * DT_VERTS_PER_POLYGON];
-	float areas[DT_VERTS_PER_POLYGON];
-	dtVcopy(&verts[0 * 3], v);
-	for (int j = 1; j < poly->vertCount; ++j)
-	{
-		v = &tile->verts[poly->verts[j] * 3];
-		dtVcopy(&verts[j * 3], v);
-	}
-
-	const float s = frand();
-	const float t = frand();
-
-	float pt[3];
-	dtRandomPointInConvexPoly(verts, poly->vertCount, areas, s, t, pt);
-
-	float h = 0.0f;
-	dtStatus status = getPolyHeight(polyRef, pt, &h);
-	if (dtStatusFailed(status))
-		return status;
-	pt[1] = h;
-
-	dtVcopy(randomPt, pt);
-	*randomRef = polyRef;
-
-	return DT_SUCCESS;
-}
-
 uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 					   const dtPolyRef *visited, uint32_t nvisited)
 {
@@ -556,6 +360,202 @@ bool inRangeYZX(const float *v1, const float *v2, float r, float h)
 	const float dy = v2[1] - v1[1]; // elevation
 	const float dz = v2[2] - v1[2];
 	return (dx * dx + dz * dz) < r * r && fabsf(dy) < h;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+/// @class dtNavMeshQuery
+///
+/// For methods that support undersized buffers, if the buffer is too small
+/// to hold the entire result set the return status of the method will include
+/// the #DT_BUFFER_TOO_SMALL flag.
+///
+/// Constant member functions can be used by multiple clients without side
+/// effects. (E.g. No change to the closed list. No impact on an in-progress
+/// sliced path query. Etc.)
+///
+/// Walls and portals: A @e wall is a polygon segment that is
+/// considered impassable. A @e portal is a passable segment between polygons.
+/// A portal may be treated as a wall based on the dtQueryFilter used for a query.
+///
+/// @see dtNavMesh, dtQueryFilter, #dtAllocNavMeshQuery(), #dtAllocNavMeshQuery()
+
+dtNavMeshQuery::dtNavMeshQuery() : m_nav(0),
+								   m_tinyNodePool(0),
+								   m_nodePool(0),
+								   m_openList(0)
+{
+	memset(&m_query, 0, sizeof(dtQueryData));
+}
+
+dtNavMeshQuery::~dtNavMeshQuery()
+{
+	if (m_tinyNodePool)
+		m_tinyNodePool->~dtNodePool();
+	if (m_nodePool)
+		m_nodePool->~dtNodePool();
+	if (m_openList)
+		m_openList->~dtNodeQueue();
+	dtFree(m_tinyNodePool);
+	dtFree(m_nodePool);
+	dtFree(m_openList);
+}
+
+/// @par
+///
+/// Must be the first function called after construction, before other
+/// functions are used.
+///
+/// This function can be used multiple times.
+dtStatus dtNavMeshQuery::init(const dtNavMesh *nav, const int maxNodes)
+{
+	if (maxNodes > DT_NULL_IDX || maxNodes > (1 << DT_NODE_PARENT_BITS) - 1)
+		return DT_FAILURE | DT_INVALID_PARAM;
+
+	m_nav = nav;
+
+	if (!m_nodePool || m_nodePool->getMaxNodes() < maxNodes)
+	{
+		if (m_nodePool)
+		{
+			m_nodePool->~dtNodePool();
+			dtFree(m_nodePool);
+			m_nodePool = 0;
+		}
+		m_nodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(maxNodes, dtNextPow2(maxNodes / 4));
+		if (!m_nodePool)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_nodePool->clear();
+	}
+
+	if (!m_tinyNodePool)
+	{
+		m_tinyNodePool = new (dtAlloc(sizeof(dtNodePool), DT_ALLOC_PERM)) dtNodePool(64, 32);
+		if (!m_tinyNodePool)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_tinyNodePool->clear();
+	}
+
+	if (!m_openList || m_openList->getCapacity() < maxNodes)
+	{
+		if (m_openList)
+		{
+			m_openList->~dtNodeQueue();
+			dtFree(m_openList);
+			m_openList = 0;
+		}
+		m_openList = new (dtAlloc(sizeof(dtNodeQueue), DT_ALLOC_PERM)) dtNodeQueue(maxNodes);
+		if (!m_openList)
+			return DT_FAILURE | DT_OUT_OF_MEMORY;
+	}
+	else
+	{
+		m_openList->clear();
+	}
+
+	return DT_SUCCESS;
+}
+
+dtStatus dtNavMeshQuery::findRandomPoint(const dtQueryFilter *filter, float (*frand)(),
+										 dtPolyRef *randomRef, float *randomPt) const
+{
+	dtAssert(m_nav);
+
+	if (!filter || !frand || !randomRef || !randomPt)
+		return DT_FAILURE | DT_INVALID_PARAM;
+
+	// Randomly pick one tile. Assume that all tiles cover roughly the same area.
+	const dtMeshTile *tile = 0;
+	float tsum = 0.0f;
+	for (int i = 0; i < m_nav->getMaxTiles(); i++)
+	{
+		const dtMeshTile *t = m_nav->getTile(i);
+		if (!t || !t->header)
+			continue;
+
+		// Choose random tile using reservoi sampling.
+		const float area = 1.0f; // Could be tile area too.
+		tsum += area;
+		const float u = frand();
+		if (u * tsum <= area)
+			tile = t;
+	}
+	if (!tile)
+		return DT_FAILURE;
+
+	// Randomly pick one polygon weighted by polygon area.
+	const dtPoly *poly = 0;
+	dtPolyRef polyRef = 0;
+	const dtPolyRef base = m_nav->getPolyRefBase(tile);
+
+	float areaSum = 0.0f;
+	for (int i = 0; i < tile->header->polyCount; ++i)
+	{
+		const dtPoly *p = &tile->polys[i];
+		// Do not return off-mesh connection polygons.
+		if (p->getType() != DT_POLYTYPE_GROUND)
+			continue;
+		// Must pass filter
+		const dtPolyRef ref = base | (dtPolyRef)i;
+		if (!filter->passFilter(ref, tile, p))
+			continue;
+
+		// Calc area of the polygon.
+		float polyArea = 0.0f;
+		for (int j = 2; j < p->vertCount; ++j)
+		{
+			const float *va = &tile->verts[p->verts[0] * 3];
+			const float *vb = &tile->verts[p->verts[j - 1] * 3];
+			const float *vc = &tile->verts[p->verts[j] * 3];
+			polyArea += dtTriArea2D(va, vb, vc);
+		}
+
+		// Choose random polygon weighted by area, using reservoi sampling.
+		areaSum += polyArea;
+		const float u = frand();
+		if (u * areaSum <= polyArea)
+		{
+			poly = p;
+			polyRef = ref;
+		}
+	}
+
+	if (!poly)
+		return DT_FAILURE;
+
+	// Randomly pick point on polygon.
+	const float *v = &tile->verts[poly->verts[0] * 3];
+	float verts[3 * DT_VERTS_PER_POLYGON];
+	float areas[DT_VERTS_PER_POLYGON];
+	dtVcopy(&verts[0 * 3], v);
+	for (int j = 1; j < poly->vertCount; ++j)
+	{
+		v = &tile->verts[poly->verts[j] * 3];
+		dtVcopy(&verts[j * 3], v);
+	}
+
+	const float s = frand();
+	const float t = frand();
+
+	float pt[3];
+	dtRandomPointInConvexPoly(verts, poly->vertCount, areas, s, t, pt);
+
+	float h = 0.0f;
+	dtStatus status = getPolyHeight(polyRef, pt, &h);
+	if (dtStatusFailed(status))
+		return status;
+	pt[1] = h;
+
+	dtVcopy(randomPt, pt);
+	*randomRef = polyRef;
+
+	return DT_SUCCESS;
 }
 
 dtStatus dtNavMeshQuery::findRandomPointAroundCircle(dtPolyRef startRef, const float *centerPos, const float maxRadius,

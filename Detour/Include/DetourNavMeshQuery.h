@@ -206,6 +206,10 @@ public:
 					  const dtQueryFilter *filter,
 					  dtPolyRef *path, int *pathCount, const int maxPath) const;
 
+	dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
+							const dtPolyRef *polyPath, uint32_t polyPathSize,
+							float *smoothPath, int *smoothPathSize, uint32_t maxSmoothPathSize);
+
 	/// Finds the straight path from the start to the end position within the polygon corridor.
 	///  @param[in]		startPos			Path start position. [(x, y, z)]
 	///  @param[in]		endPos				Path end position. [(x, y, z)]
@@ -604,10 +608,6 @@ uint32_t fixupCorridor(dtPolyRef *path, uint32_t npath, uint32_t maxPath,
 bool getSteerTarget(const dtNavMeshQuery *query, const float *startPos, const float *endPos,
 					float minTargetDist, const dtPolyRef *path, uint32_t pathSize,
 					float *steerPos, unsigned char &steerPosFlag, dtPolyRef &steerPosRef);
-
-dtStatus findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dtQueryFilter *filter, dtNavMesh *mesh, const float *startPos, const float *endPos,
-						const dtPolyRef *polyPath, uint32_t polyPathSize,
-						float *smoothPath, int *smoothPathSize, uint32_t maxSmoothPathSize);
 
 bool inRangeYZX(const float *v1, const float *v2, float r, float h);
 

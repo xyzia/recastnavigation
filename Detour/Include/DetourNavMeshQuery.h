@@ -16,8 +16,8 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-#define MAX_PATH_LENGTH 74
-#define MAX_POINT_PATH_LENGTH 74
+#define MAX_PATH_LENGTH 370
+#define MAX_POINT_PATH_LENGTH 370
 
 #define SMOOTH_PATH_STEP_SIZE 4.0f
 #define SMOOTH_PATH_SLOP 0.3f

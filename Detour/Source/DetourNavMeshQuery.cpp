@@ -25,8 +25,6 @@
 #include "DetourMath.h"
 #include "DetourAlloc.h"
 #include "DetourAssert.h"
-#include <iostream>
-
 #include <new>
 
 /// @class dtQueryFilter

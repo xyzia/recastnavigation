@@ -35,6 +35,10 @@
 
 #include "DetourNavMesh.h"
 #include "DetourStatus.h"
+#include <stdint.h>
+#include <cstdint>
+
+typedef unsigned long UINT32;
 
 // Define DT_VIRTUAL_QUERYFILTER if you wish to derive a custom filter from dtQueryFilter.
 // On certain platforms indirect or virtual function call is expensive. The default

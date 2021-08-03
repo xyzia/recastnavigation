@@ -459,7 +459,7 @@ dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dt
 	*smoothPathSize = nsmoothPath;
 
 	// this is most likely a loop
-	return nsmoothPath < MAX_POINT_PATH_LENGTH ? DT_SUCCESS : DT_FAILURE;
+	return nsmoothPath < maxSmoothPathSize ? DT_SUCCESS : DT_FAILURE;
 }
 
 dtStatus dtNavMeshQuery::findRandomPoint(const dtQueryFilter *filter, float (*frand)(),

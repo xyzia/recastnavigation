@@ -444,7 +444,7 @@ dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dt
 				dtVcopy(iterPos, newEndPos);
 
 				m_navMeshQuery->getPolyHeight(polys[0], iterPos, &iterPos[1]);
-				iterPos[1] += 0.5f;
+				//iterPos[1] += 0.5f;
 			}
 		}
 

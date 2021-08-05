@@ -395,7 +395,7 @@ dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dt
 		npolys = fixupCorridor(polys, npolys, MAX_PATH_LENGTH, visited, nvisited);
 
 		m_navMeshQuery->getPolyHeight(polys[0], result, &result[1]);
-		result[1] += 0.5f;
+		//result[1] += 0.5f;
 		dtVcopy(iterPos, result);
 
 		// Handle end of path and off-mesh links when close enough.

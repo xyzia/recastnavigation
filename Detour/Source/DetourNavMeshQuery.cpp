@@ -447,7 +447,7 @@ dtStatus dtNavMeshQuery::findSmoothPath(const dtNavMeshQuery *m_navMeshQuery, dt
 				//iterPos[1] += 0.5f;
 			}
 		}
-
+		//
 		// Store results.
 		if (nsmoothPath < maxSmoothPathSize)
 		{
